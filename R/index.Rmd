@@ -321,7 +321,7 @@ save.image(file="./tmp/2017-quadrat.RData")
 
 ```
 
-```{r, out.height="480px"}
+```{r, out.width="480px"}
 
 include_graphics(paste0("./out/", list.files("../docs/out")))
 
