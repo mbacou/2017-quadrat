@@ -39,7 +39,6 @@ opts_chunk$set(comment=NA, warning=F, message=F, echo=F, base.url="../docs",
   dev.args=list(
     png=list(family="Roboto Condensed", pointsize=9), 
     svg=list(family="Roboto Condensed")))
-table_options(htmloptions(justification="c", head=F, pad=T))
 
 ```
 
@@ -209,7 +208,7 @@ save_tmap(m, "./docs/out/fews-et_anom.png", width=6, height=3.6)
 
 
 #####################################################################################
-# ETMNTS3 - Long-term MODIS-estimated Evapotranspiration (MOD16)
+# ETMNTS3 - Long-term MODIS-estimated Evapotranspiration (MOD16, mm)
 # http://worldgrids.org/doku.php/wiki:etmnts3
 tmp <- raster("~/Projects/hc-data/WorldGrids/etmnts3a.tif")
 res(tmp)
@@ -228,6 +227,28 @@ m <- tm_shape(tmp) + tm_raster(names(tmp), pal=pal.et(255),
 
 save_tmap(m, "./docs/out/modis-et.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
 
+#####################################################################################
+# L12IGB3 - Croplands based on the MOD12Q1 product (percent)
+# http://worldgrids.org/doku.php/wiki:l12igb3
+tmp <- raster("~/Projects/hc-data/WorldGrids/l12igb3a.tif")
+res(tmp)
+# [1] 0.008333333 0.008333333 => 1km
+crs(tmp)
+# +proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0
+NAvalue(tmp)
+# [1] -Inf
+minValue(tmp)
+# [1] 0
+maxValue(tmp)
+# 255
+tmp <- crop(tmp, gha)
+tmp[tmp>100] <- NA
+
+m <- tm_shape(tmp) + tm_raster(names(tmp), pal=pal.ndvi_anom(255),
+  title="Croplands\nbased on the MODIS\nMOD12Q1 product\n(percent)",
+  breaks=seq(0,105,5), labels=na2null(seq(0,100,5)*c(1, NA))) + p
+
+save_tmap(m, "./docs/out/modis-cropland.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
 
 #####################################################################################
 # NDVI
@@ -236,7 +257,6 @@ save_tmap(m, "./docs/out/modis-et.png", width=4, height=4, units="in", family="R
 # NDVI = (value - 100) / 100 
 # example: [ (150 - 100) / 100 = 0.5 NDVI ] 
 # Seems to me all zero values are clouds (white legend), so should be NA too
-tmp <- fews[varCode=="ndvi_east" & status==T, raster(last(raster), crs=last(proj))]
 tmp <- brick(as.list(fews[varCode=="ndvi_west" & date %between% c("2015-01-01", "2015-12-31"), raster]))
 crs(tmp)
 res(tmp)
@@ -251,10 +271,10 @@ tmp <- (tmp - 100) / 100
 spplot(tmp, col.regions=pal.ndvi)
 
 # 2015-2016 period summary
-tmp.mean <- (mean(tmp[[1:36]], na.rm=T) + mean(tmp[[37:72]], na.rm=T))/2
-minValue(tmp.mean)
+tmp15 <- (mean(tmp[[1:36]], na.rm=T) + mean(tmp[[37:72]], na.rm=T))/2
+minValue(tmp15)
 # [1] 800
-maxValue(tmp.mean)
+maxValue(tmp15)
 # [1] 1790
 
 m <- tm_shape(tmp.mean) + tm_raster(names(tmp.mean), pal=pal.ndvi(255),
@@ -303,7 +323,7 @@ save.image(file="./tmp/2017-quadrat.RData")
 
 ```{r}
 
-include_graphics(list.files("./out"))
+include_graphics(paste0("./out/", list.files("./out")))
 
 ```
 
