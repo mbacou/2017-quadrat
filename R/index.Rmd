@@ -323,7 +323,7 @@ save.image(file="./tmp/2017-quadrat.RData")
 
 ```{r}
 
-include_graphics(paste0("../docs/out/", list.files("../docs/out")))
+include_graphics(paste0("./out/", list.files("../docs/out")))
 
 ```
 
