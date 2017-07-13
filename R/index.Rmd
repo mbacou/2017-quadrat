@@ -1,0 +1,309 @@
+---
+title: "SSA Agricultural Potential (Documentation)"
+author: "[BACOU, Melanie](http://github.com/mbacou) for BMGF"
+date: "Last updated on `r Sys.Date()`. DO NOT USE OR CITE"
+description: "Spatial segmentation of sub-Saharan Africa's arable land into zones of low and high agricultural potential."
+site: bookdown::bookdown_site
+knit: bookdown::render_book
+output:
+  bookdown::gitbook:
+    url: "https://mbacou.github.io/2017-quadrat/"
+    github-repo: "mbacou/2017-quadrat"
+df_print: paged
+always_allow_html: yes
+bibliography: biblio.bib
+cover-image: fig/cover.jpg
+csl: apa.csl
+link-citations: yes
+nocite: |
+  @mathew2016drought, @santiago2016speibase, @hengl2017soilgrids
+---
+
+# Data Sources
+
+Existing sources of hi-res spatial covariates (tested over Ghana).
+
+```{r setup, include=F}
+
+library(raster)
+library(data.table)
+library(viridis)
+library(knitr)
+library(tmap)
+
+load("../tmp/2017-quadrat.RData")
+
+# Output options
+opts_chunk$set(comment=NA, warning=F, message=F, echo=F, base.url="../docs",
+  dev="png", fig.path="fig/", fig.width=4, fig.height=4, dpi=300, cache=F, 
+  dev.args=list(
+    png=list(family="Roboto Condensed", pointsize=9), 
+    svg=list(family="Roboto Condensed")))
+table_options(htmloptions(justification="c", head=F, pad=T))
+
+```
+
+
+```{r gha, eval=FALSE}
+
+library(raster)
+library(data.table)
+library(viridis)
+library(stringr)
+
+load("./tmp/2017-quadrat.RData")
+
+# Load the grid catalogs we created for AgResults
+load("../2017-agresults/tmp/2017-agresults.RData")
+# Clean stuff we don't need here
+rm(list=setdiff(ls(), c("afsis", "fews", "bio.lbl", "pplot", "na2null",
+  "pal.et", "pal.et_anom", "pal.ndvi", "pal.ndvi_anom", 
+  "pal.ndvi_pct", "pal.orcdrc", "pal.pet",
+  "pal.rain", "pal.rfe", "pal.spei", "pal.temp")))
+
+# Map spatial covariates over Ghana
+# Start with 2015-2016 period summaries
+gha <- getData("GADM", country="GHA", level=1)
+crs(gha)
+
+# Default map options
+# tm_scale_bar(position=c("right", "bottom"), breaks=c(0,50,100,150)) +
+p <- tm_layout(legend.outside=T, legend.text.size=.8, attr.outside=T, title.size=.8)
+
+
+##################################################################################### 
+# Land cover (ESA/CCI, 2015)
+tmp <- raster("~/Projects/hc-data/ESA/ESACCI-LC-L4-LCCS-Map-300m-P1Y-2015-v2.0.7.tif")
+res(tmp)
+# [1] 0.002777778 0.002777778
+tmp <- crop(tmp, gha)
+tmp[tmp==0] <- NA
+hist(tmp)
+
+pal.lc <- fread("~/Projects/hc-data/ESA/ESACCI-LC-Legend.csv")
+setnames(pal.lc, 1:2, c("code", "class"))
+pal.lc[, col := rgb(cbind(R,G,B), maxColorValue=255)]
+pal.lc[, cat := str_replace_all(str_replace_all(abbreviate(toupper(class), 5), fixed("("), ""), fixed("/"), "")]
+
+m <- tm_shape(tmp) + tm_raster(names(tmp), pal=pal.lc$col,
+  title="ESA/CCI Land Cover\n2015, 300m",
+  breaks=c(pal.lc$code, 255), labels=pal.lc$cat) + p
+
+save_tmap(m, "./docs/out/esa-lc.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
+
+
+##################################################################################### 
+# AGRHYMET - hi-res land cover (USGS/EROS, 2013)
+tmp <- raster("~/Projects/hc-data/FEWS/west_africa_land-use_land-cover_2013_2km/swa_2013lulc_2km.tif")
+proj4string(tmp)
+# [1] "+proj=laea +lat_0=11 +lon_0=3 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0"
+res(tmp)
+# [1] 2000 2000 => 2km
+
+gha <- spTransform(gha, proj4string(tmp))
+tmp <- crop(tmp, gha)
+gha <- spTransform(gha, CRS("+init=epsg:4326"))
+unique(tmp)
+#  [1]  1  2  3  4  6  7  8  9 10 11 12 13 14 15 21 22 23 24 25 27 31 78
+levels(tmp)
+
+pal.walc <- data.table(levels(tmp)[[1]])
+pal.walc [, col := rgb(cbind(red,green,blue), maxColorValue=255)]
+pal.walc[, code := as.character(code)]
+setkey(pal.walc, value)
+levels(tmp) <- pal.walc[, .(ID=value, code, class=class_name, col)]
+
+m <- tm_shape(tmp) + tm_raster(names(tmp), pal=pal.walc$col,
+  title="USGS/EROS\nWest Africa LULC\n2013, 2km",
+  breaks=c(pal.walc$value, 255), labels=pal.walc$code) + p
+
+save_tmap(m, "./docs/out/usgs-lc.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
+
+
+#####################################################################################
+# CHIRPS
+gdalUtils::gdalinfo(fews[varCode=="chirps" & status==T, last(raster)])
+# => no NA value is defined, EPSG:4326
+tmp <- brick(as.list(fews[varCode=="chirps" & date %between% c("2015-01-01", "2016-12-31"), raster]))
+tmp <- crop(tmp, gha)
+minValue(tmp[[1]])
+# [1] -9999
+maxValue(tmp[[1]])
+# [1] 28.92094
+tmp[tmp<0] <- NA
+
+# 2015-2016 period summary
+tmp.mean <- (sum(tmp[[1:12]], na.rm=T)+sum(tmp[[13:24]], na.rm=T))/2
+minValue(tmp.mean)
+# [1] 0
+maxValue(tmp.mean)
+# [1] 2094.527
+
+m <- tm_shape(tmp.mean) + tm_raster(names(tmp.mean), pal=pal.rain(255),
+  title="2-Year Mean\nYearly Rainfall\nCHIRPS v2.0\n2015/01-2016/12\n(mm)",
+  breaks=seq(0,1900,100), labels=na2null(seq(0,1800,100)*c(1, NA))) + p
+
+save_tmap(m, "./docs/out/fews-chirps.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
+
+#####################################################################################
+# RFE
+gdalUtils::gdalinfo(fews[varCode=="rfe" & status==T, last(raster)])
+tmp <- brick(as.list(fews[varCode=="rfe" & date %between% c("2015-01-01", "2016-12-31"), raster]))
+proj4string(tmp) <- fews[varCode=="rfe" & status==T, last(proj)]
+gha <- spTransform(gha, proj4string(tmp))
+tmp <- crop(tmp, gha)
+spplot(tmp[[2]])
+colortable(tmp) <- logical(0)
+minValue(tmp)
+maxValue(tmp)
+
+# 2015-2016 period summary
+tmp.mean <- (sum(tmp[[1:36]], na.rm=T)+sum(tmp[[37:72]], na.rm=T))/2
+minValue(tmp.mean)
+# [1] 800
+maxValue(tmp.mean)
+# [1] 1790
+
+m <- tm_shape(mask(tmp.mean, gha)) + tm_raster(names(tmp.mean), pal=pal.rain(255),
+  title="2-Year Mean\nYearly RFE\n2015/01-2016/12\n(mm)",
+  breaks=seq(0,1900,100), labels=na2null(seq(0,1800,100)*c(1, NA))) + p
+
+gha <- spTransform(gha, CRS("+init=epsg:4326"))
+
+save_tmap(m, "./docs/out/fews-rfe.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
+
+#####################################################################################
+# PET
+tmp <- fews[varCode=="pet" & status==T, raster(last(raster), crs=last(proj))]
+tmp[tmp<0] <- NA
+minValue(crop(tmp, pts))
+maxValue(crop(tmp, pts))
+m <- tm_shape(tmp) + tm_raster(names(tmp), pal=pal.pet(255),
+  title="PET\nJune, 20 2017\n(mm)",
+  breaks=seq(100,960,40), labels=na2null(seq(100,920,40)*c(1, NA))) + p
+
+save_tmap(m, "./docs/out/fews-pet.png", width=6, height=3.6)
+
+#####################################################################################
+# ETa
+tmp <- fews[varCode=="eta" & status==T, raster(last(raster), crs=last(proj))]
+tmp[tmp<0] <- NA
+maxValue(crop(tmp, pts))
+m <- tm_shape(tmp) + tm_raster(names(tmp), pal=pal.et(255),
+  title="ETa\nJune 2017\ndekad 2\n(mm)",
+  breaks=seq(0,130,10), labels=na2null(seq(0,120,10)*c(1, NA))) + p
+
+save_tmap(m, "./docs/out/fews-eta.png", width=6, height=3.6)
+
+#####################################################################################
+# ET_ANOM - should be percent of median 1-100
+# The anomalies are the ratio of ETa and median ETa, expressed as a percent value
+tmp <- fews[varCode=="et_anom" & status==T, raster(last(raster), crs=last(proj))]
+colortable(tmp) <- logical(0)
+maxValue(crop(tmp, pts))
+m <- tm_shape(tmp) + tm_raster(names(tmp), pal=pal.et_anom(255),
+  title="ET Anomaly\nJune 2017\ndekad 2\n(percent)",
+  breaks=seq(0,285,15), labels=na2null(seq(0,270,15)*c(1, NA))) + p
+
+save_tmap(m, "./docs/out/fews-et_anom.png", width=6, height=3.6)
+
+
+#####################################################################################
+# ETMNTS3 - Long-term MODIS-estimated Evapotranspiration (MOD16)
+# http://worldgrids.org/doku.php/wiki:etmnts3
+tmp <- raster("~/Projects/hc-data/WorldGrids/etmnts3a.tif")
+res(tmp)
+# [1] 0.008333333 0.008333333 => 1km
+crs(tmp)
+# +proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0 
+tmp <- crop(tmp, gha)
+minValue(tmp)
+# [1] 3516
+maxValue(tmp)
+# 17583
+
+m <- tm_shape(tmp) + tm_raster(names(tmp), pal=pal.et(255),
+  title="Long-term\nMODIS ET\n(MOD16)\n(mm)",
+  breaks=seq(0,19000,1000), labels=na2null(seq(0,18000,1000)*c(1, NA))) + p
+
+save_tmap(m, "./docs/out/modis-et.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
+
+
+#####################################################################################
+# NDVI
+# eMODIS NDVI data are stretched (mapped) linearly (to byte values) as follows:
+# [-1.0, 1.0] -> [0, 200] - Invalid Values: 201 - 255 
+# NDVI = (value - 100) / 100 
+# example: [ (150 - 100) / 100 = 0.5 NDVI ] 
+# Seems to me all zero values are clouds (white legend), so should be NA too
+tmp <- fews[varCode=="ndvi_east" & status==T, raster(last(raster), crs=last(proj))]
+tmp <- brick(as.list(fews[varCode=="ndvi_west" & date %between% c("2015-01-01", "2015-12-31"), raster]))
+crs(tmp)
+res(tmp)
+colortable(tmp) <- logical(0)
+minValue(tmp)
+maxValue(tmp)
+tmp <- crop(tmp, gha)
+
+# TODO correct stretch, seems 0 values might be NA as well
+tmp[tmp > 200 | tmp == 0] <- NA
+tmp <- (tmp - 100) / 100
+spplot(tmp, col.regions=pal.ndvi)
+
+# 2015-2016 period summary
+tmp.mean <- (mean(tmp[[1:36]], na.rm=T) + mean(tmp[[37:72]], na.rm=T))/2
+minValue(tmp.mean)
+# [1] 800
+maxValue(tmp.mean)
+# [1] 1790
+
+m <- tm_shape(tmp.mean) + tm_raster(names(tmp.mean), pal=pal.ndvi(255),
+  title="2-Year Mean Yearly NDVI\n2015/01-2016/12\n(index)",
+  breaks=seq(-1,1.1,0.1), labels=na2null(seq(-1,1,0.1)*c(1, NA))) + p
+
+save_tmap(m, "./docs/out/fews-ndvi.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
+
+#####################################################################################
+# NDVI_ANOM
+# Percent of Normal
+# The absolute difference and anomaly images are stretched from - 0.3 to 0.3 NDVI. The
+# area of relatively no difference is approximately -0.05 - 0.05.
+# The percent of normal data are expressed as a percent, where values between 95 and
+# 105 indicate average conditions. Values below 95 represent below average vegetation 
+# conditions, while those above 105 represent above average conditions.
+tmp <- fews[varCode=="ndvi_anom_east" & status==T, raster(last(raster), crs=last(proj))]
+tmp1 <- fews[varCode=="ndvi_anom_west" & status==T, raster(last(raster), crs=last(proj))]
+colortable(tmp) <- logical(0)
+colortable(tmp1) <- logical(0)
+tmp <- crop(tmp, ken.l2)
+tmp1 <- crop(tmp1, nga.l2)
+minValue(tmp)
+maxValue(tmp)
+minValue(tmp1)
+maxValue(tmp1)
+# => 0-255, 100 should be normal
+spplot(tmp, col.regions=pal.ndvi_pct)
+
+m <- tm_shape(tmp) + tm_raster(names(tmp), pal=pal.ndvi_pct(255),
+  title="NDVI Anomaly\nJune 2017\ndekad 2\n(percent of normal)",
+  breaks=seq(0,210,10), labels=na2null(seq(0,200,10)*c(1, NA))) +
+  tm_shape(tmp1) + tm_raster(names(tmp1), pal=pal.ndvi_pct(255),
+    legend.show=F, breaks=seq(0,210,10)) + p
+
+save_tmap(m, "./docs/out/fews-ndvi_anom.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
+
+```
+
+```{r save, eval=FALSE}
+
+rm(tmp, tmp.mean, tmp1, m)
+save.image(file="./tmp/2017-quadrat.RData")
+
+```
+
+```{r}
+
+include_graphics(list.files("./out"))
+
+```
+
