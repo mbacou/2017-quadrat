@@ -408,7 +408,7 @@ minValue(tmp)
 NAvalue(tmp)
 # [1] -Inf
 
-m <- tm_shape(crop(tmp, gha)) + tm_raster(names(tmp), pal=pal.ndvi(255),
+m <- tm_shape(crop(tmp, gha)) + tm_raster(names(tmp), pal=c("#ffffff", pal.ndvi(255)),
   title="GLUES\nCrop Suitability\n(all crops)\n(percent)",
   breaks=seq(0,105,5), labels=na2null(seq(0,100,5)*c(1, NA))) + p
 
