@@ -16,7 +16,7 @@ cover-image: fig/cover.jpg
 csl: apa.csl
 link-citations: yes
 nocite: |
-  @mathew2016drought, @santiago2016speibase, @hengl2017soilgrids
+  @mathew2016drought, @santiago2016speibase, @hengl2017soilgrids, @zabel2014suitability
 ---
 
 # Data Sources
@@ -243,7 +243,7 @@ save_tmap(m, "./docs/out/modis-et.png", width=4, height=4, units="in", family="R
 #####################################################################################
 # L14IGB3 - Cropland/natural vegetation mosaic based on the MOD12Q1 product
 # http://worldgrids.org/doku.php/wiki:l14igb3 (2011, percent, 1km)
-tmp <- raster("~/Projects/hc-data/WorldGrids/l14igb3.tif")
+tmp <- raster("~/Projects/hc-data/WorldGrids/l14igb3a.tif")
 res(tmp)
 # [1] 0.008333333 0.008333333 => 1km
 crs(tmp)
@@ -254,11 +254,11 @@ minValue(tmp)
 # [1] 0
 maxValue(tmp)
 # 255
-tmp <- crop(tmp, gha)
+hist(tmp)
 tmp[tmp>100] <- NA
 
-m <- tm_shape(tmp) + tm_raster(names(tmp), pal=pal.ndvi_anom(255),
-  title="Croplands\nbased on the MODIS\nMOD12Q1 product\n(percent)",
+m <- tm_shape(crop(tmp, gha)) + tm_raster(names(tmp), pal=c("#ffffff", pal.ndvi_anom(255)),
+  title="Cropland\nbased on the MODIS\nMOD12Q1 product\n(percent)",
   breaks=seq(0,105,5), labels=na2null(seq(0,100,5)*c(1, NA))) + p
 
 save_tmap(m, "./docs/out/modis-cropland.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
