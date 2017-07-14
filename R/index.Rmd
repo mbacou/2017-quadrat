@@ -51,6 +51,13 @@ library(viridis)
 library(stringr)
 
 load("./tmp/2017-quadrat.RData")
+rasterOptions(tmpdir="/home/data/tmp")
+
+# We agreed to a quick but likely good enough approach. Dekadal NDVI data for 15-16 
+# years and will extract the maximum value for each year and take the mean of that for
+# each pixel and then we will take that file that will also have cropland mask and 
+# forest/WDPA mask values to decide the exact algorithm to assign hi or lo ag. pot
+# values
 
 # Load the grid catalogs we created for AgResults
 load("../2017-agresults/tmp/2017-agresults.RData")
@@ -63,7 +70,8 @@ rm(list=setdiff(ls(), c("afsis", "fews", "bio.lbl", "pplot", "na2null",
 # Map spatial covariates over Ghana
 # Start with 2015-2016 period summaries
 gha <- getData("GADM", country="GHA", level=1)
-crs(gha)
+nga <- getData("GADM", country="NGA", level=1)
+zoi <- rbind(gha, nga)
 
 # Default map options
 # tm_scale_bar(position=c("right", "bottom"), breaks=c(0,50,100,150)) +
@@ -123,7 +131,7 @@ save_tmap(m, "./docs/out/usgs-lc.png", width=4, height=4, units="in", family="Ro
 # CHIRPS
 gdalUtils::gdalinfo(fews[varCode=="chirps" & status==T, last(raster)])
 # => no NA value is defined, EPSG:4326
-tmp <- brick(as.list(fews[varCode=="chirps" & date %between% c("2015-01-01", "2016-12-31"), raster]))
+tmp <- stack(as.list(fews[varCode=="chirps" & date %between% c("2015-01-01", "2016-12-31"), raster]))
 tmp <- crop(tmp, gha)
 minValue(tmp[[1]])
 # [1] -9999
@@ -147,7 +155,7 @@ save_tmap(m, "./docs/out/fews-chirps.png", width=4, height=4, units="in", family
 #####################################################################################
 # RFE
 gdalUtils::gdalinfo(fews[varCode=="rfe" & status==T, last(raster)])
-tmp <- brick(as.list(fews[varCode=="rfe" & date %between% c("2015-01-01", "2016-12-31"), raster]))
+tmp <- stack(as.list(fews[varCode=="rfe" & date %between% c("2015-01-01", "2016-12-31"), raster]))
 proj4string(tmp) <- fews[varCode=="rfe" & status==T, last(proj)]
 gha <- spTransform(gha, proj4string(tmp))
 tmp <- crop(tmp, gha)
@@ -172,7 +180,7 @@ gha <- spTransform(gha, CRS("+init=epsg:4326"))
 save_tmap(m, "./docs/out/fews-rfe.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
 
 #####################################################################################
-# PET
+# FEWS PET
 tmp <- fews[varCode=="pet" & status==T, raster(last(raster), crs=last(proj))]
 tmp[tmp<0] <- NA
 minValue(crop(tmp, pts))
@@ -197,6 +205,8 @@ save_tmap(m, "./docs/out/fews-eta.png", width=6, height=3.6)
 #####################################################################################
 # ET_ANOM - should be percent of median 1-100
 # The anomalies are the ratio of ETa and median ETa, expressed as a percent value
+#  ET product is still more reliable in a relative sense as in anomalies for drought
+# monitoring purposes
 tmp <- fews[varCode=="et_anom" & status==T, raster(last(raster), crs=last(proj))]
 colortable(tmp) <- logical(0)
 maxValue(crop(tmp, pts))
@@ -210,6 +220,9 @@ save_tmap(m, "./docs/out/fews-et_anom.png", width=6, height=3.6)
 #####################################################################################
 # ETMNTS3 - Long-term MODIS-estimated Evapotranspiration (MOD16, mm)
 # http://worldgrids.org/doku.php/wiki:etmnts3
+# Should be based on MODIS `NBAR_EVI_Area`, the sum of fitted daily NBARA EVI values
+# during the identified vegetation cycle (i.e. `Onset_Greenness_Increase` to
+# `Onset_Greenness_Minimum`)
 tmp <- raster("~/Projects/hc-data/WorldGrids/etmnts3a.tif")
 res(tmp)
 # [1] 0.008333333 0.008333333 => 1km
@@ -228,9 +241,9 @@ m <- tm_shape(tmp) + tm_raster(names(tmp), pal=pal.et(255),
 save_tmap(m, "./docs/out/modis-et.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
 
 #####################################################################################
-# L12IGB3 - Croplands based on the MOD12Q1 product (percent)
-# http://worldgrids.org/doku.php/wiki:l12igb3
-tmp <- raster("~/Projects/hc-data/WorldGrids/l12igb3a.tif")
+# L14IGB3 - Cropland/natural vegetation mosaic based on the MOD12Q1 product
+# http://worldgrids.org/doku.php/wiki:l14igb3 (2011, percent, 1km)
+tmp <- raster("~/Projects/hc-data/WorldGrids/l14igb3.tif")
 res(tmp)
 # [1] 0.008333333 0.008333333 => 1km
 crs(tmp)
@@ -249,39 +262,6 @@ m <- tm_shape(tmp) + tm_raster(names(tmp), pal=pal.ndvi_anom(255),
   breaks=seq(0,105,5), labels=na2null(seq(0,100,5)*c(1, NA))) + p
 
 save_tmap(m, "./docs/out/modis-cropland.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
-
-#####################################################################################
-# NDVI
-# eMODIS NDVI data are stretched (mapped) linearly (to byte values) as follows:
-# [-1.0, 1.0] -> [0, 200] - Invalid Values: 201 - 255 
-# NDVI = (value - 100) / 100 
-# example: [ (150 - 100) / 100 = 0.5 NDVI ] 
-# Seems to me all zero values are clouds (white legend), so should be NA too
-tmp <- brick(as.list(fews[varCode=="ndvi_west" & date %between% c("2015-01-01", "2015-12-31"), raster]))
-crs(tmp)
-res(tmp)
-colortable(tmp) <- logical(0)
-minValue(tmp)
-maxValue(tmp)
-tmp <- crop(tmp, gha)
-
-# TODO correct stretch, seems 0 values might be NA as well
-tmp[tmp > 200 | tmp == 0] <- NA
-tmp <- (tmp - 100) / 100
-spplot(tmp, col.regions=pal.ndvi)
-
-# 2015-2016 period summary
-tmp15 <- (mean(tmp[[1:36]], na.rm=T) + mean(tmp[[37:72]], na.rm=T))/2
-minValue(tmp15)
-# [1] 800
-maxValue(tmp15)
-# [1] 1790
-
-m <- tm_shape(tmp.mean) + tm_raster(names(tmp.mean), pal=pal.ndvi(255),
-  title="2-Year Mean Yearly NDVI\n2015/01-2016/12\n(index)",
-  breaks=seq(-1,1.1,0.1), labels=na2null(seq(-1,1,0.1)*c(1, NA))) + p
-
-save_tmap(m, "./docs/out/fews-ndvi.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
 
 #####################################################################################
 # NDVI_ANOM
@@ -314,16 +294,170 @@ save_tmap(m, "./docs/out/fews-ndvi_anom.png", width=4, height=4, units="in", fam
 
 ```
 
+```{r ndvi, eval=FALSE}
+
+#####################################################################################
+# NDVI
+# eMODIS NDVI data are stretched (mapped) linearly (to byte values) as follows:
+# [-1.0, 1.0] -> [0, 200] - Invalid Values: 201 - 255 
+# NDVI = (value - 100) / 100 
+# example: [ (150 - 100) / 100 = 0.5 NDVI ] 
+# Seems to me all zero values are clouds (white legend), so should be NA too
+# We need to download 2005-2015 10-year period, so let's add these grids into the 
+# catalog `fews`
+
+ndvi_west = list(
+  varCode = "ndvi_west",
+  varLabel = "eMODIS TERRA smoothed normalized difference vegetation index (NDVI) (dekadal, 0-1)",
+  time = "dekad",
+  unit = "index -1,1",
+  files = paste0("wa", levels(interaction(str_pad(5:14, 2, "left", 0), str_pad(1:36, 2, "left", 0), sep="", lex.order=T)), ".zip"),
+  url = "https://edcintl.cr.usgs.gov/downloads/sciweb1/shared/fews/web/africa/west/dekadal/emodis/ndvi_c6/temporallysmoothedndvi/downloads/dekadal/"
+)
+
+ndvi_west <- as.data.table(ndvi_west)
+# Download all these files
+# Fill in spatial resolution and projection details
+dir <- "/home/projects/hc-data/FEWS/"
+ndvi_west[, dest := paste0(dir, varCode, "/", files)]
+download.file(paste0(ndvi_west$url, ndvi_west$files), ndvi_west$dest)
+
+# Which ones failed to download
+# Retry to download these 30 missing files by hand
+ndvi_west[, status := file.exists(dest)]
+tmp <- ndvi_west[status=="FALSE"]
+
+# Fill in approx dates
+ndvi_west[time=="dekad", 
+  date := rep(seq(as.Date("2005-01-01"), as.Date("2014-12-31"), "month"), each=3)+c(0,10,20), by=varCode]
+
+# Unzip
+tmp <- lapply(ndvi_west[status==T, dest], function(x) unzip(x, exdir=dirname(x)))
+ndvi_west[status==T, raster := sapply(tmp, function(x) x[1])]
+
+tmp <- raster(ndvi_west[1, raster])
+ndvi_west[, `:=`(proj=proj4string(tmp), res=res(tmp)[1])]
+
+# Append these new grids into `fews`
+fews <- rbind(fews, ndvi_west, fill=T)
+rm(ndvi_west)
+
+##########################################
+# Load grids year by year over 2005-2015 10-year period and return max value
+fun <- function(x) {
+  x[x > 200] <- NA
+  x <- max(x[1:36], na.rm=T)
+  x <- x - 100 # Keep values as INT2S *100 to save disk space
+  return(x)
+}
+
+# Init list of yearly statistics
+stats <- vector("list", 10)
+names(stats) <- as.character(2005:2014)
+
+for (i in (2005:2014)[2]) {
+  tmp <- stack(as.list(fews[varCode=="ndvi_west" & year(date)==i, raster]))
+  showTmpFiles()
+  removeTmpFiles(h=0)
+  # Save grid statistics for plotting
+  stats[[as.character(i)]] <- summary(tmp)
+  cat(i, "\n")
+  # Return yearly max value
+  out <- calc(tmp, fun, filename=paste0(dir, "ndvi_west/wa", i, "_max.tif"),
+    datatype="INT2S", overwrite=T)
+}
+
+spplot(crop(out, gha), col.regions=pal.ndvi(255), zlim=c(0,90))
+# => all max values tend to remove variability, not sure that'd work for our purpose
+
+
+m <- tm_shape(tmp.mean) + tm_raster(names(tmp.mean), pal=pal.ndvi(255),
+  title="10-Year Max Yearly NDVI\n2005/01-2015/12\n(index)",
+  breaks=seq(-1,1.05,0.05), labels=na2null(seq(-1,1,0.05)*c(1, NA))) + p
+
+save_tmap(m, "./docs/out/fews-ndvi.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
+
+
+#####################################################################################
+# TODO ESA MERIS NDVI
+# The NDVI product describes globally the yearly reference dynamic of the vegetation 
+# greenness characterizing the 1999-2012 period. It is derived from 1km 
+# SPOT-VEGETATION (VGT) data. AggMean smoothed NDVI values corresponding to the mean
+# NDVI over the 1999-2012 period. It gives the yearly reference dynamic of the
+# vegetation greenness at a 7-day frequency.
+# http://maps.elie.ucl.ac.be/CCI/viewer/download.php
+
+
+
+```
+
+```{r suit, eval=FALSE}
+
+# GLUES Crop Suitability Data (percent, 1981-2010)
+# http://geoportal-glues.ufz.de/
+
+tmp <- raster("~/Projects/hc-data/GLUES/overall_cropsuit_i_1981-2010.tif")
+res(tmp)
+# [1] 0.008333333 0.008333333 => 1km
+crs(tmp)
+# +proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0 
+maxValue(tmp)
+# [1] 97
+minValue(tmp)
+# [1] 0
+NAvalue(tmp)
+# [1] -Inf
+
+m <- tm_shape(crop(tmp, gha)) + tm_raster(names(tmp), pal=pal.ndvi(255),
+  title="GLUES\nCrop Suitability\n(all crops)\n(percent)",
+  breaks=seq(0,105,5), labels=na2null(seq(0,100,5)*c(1, NA))) + p
+
+save_tmap(m, "./docs/out/glues-suit.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
+
+
+```
+
+```{r cpmask, eval=FALSE}
+
+# 1a) Reclassify ESA LULC grid between no/lo/hi crop suitability
+# 1b) Else use MODIS mosaic cropland (mask out pixels with 0 probability)
+# 2) Mask out protected areas (rasterize WDPA shapes first)
+# 3) Study the distribution of NDVI values across suitability classes
+
+
+```
+
+
 ```{r save, eval=FALSE}
 
-rm(tmp, tmp.mean, tmp1, m)
+rm(tmp, tmp.mean, tmp1, m, out, i, x)
 save.image(file="./tmp/2017-quadrat.RData")
 
 ```
 
-```{r, out.width="480px"}
+```{r, out.width="380px"}
 
-include_graphics(paste0("./out/", list.files("../docs/out")))
+include_graphics(c(
+  "../docs/out/esa-lc.png",
+  "../docs/out/usgs-lc.png",
+  "../docs/out/fews-chirps.png",
+  "../docs/out/fews-rfe.png",
+  "../docs/out/modis-cropland.png",
+  "../docs/out/glues-suit.png"
+  ))
+
+```
+
+ESA LULC grids are combined with IUCN WDPA protected areas to create areas of low/high crop suitability. MODIS C6 dekadal NDVI is summarized over a 10-year period (2005-2015).
+
+```{r, eval=FALSE, out.width="380px"}
+
+include_graphics(c(
+  "../docs/out/fews-ndvi.png",
+  "../docs/out/cropland-mask.png"
+  ))
+
+
 
 ```
 
