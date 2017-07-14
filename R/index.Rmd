@@ -438,12 +438,12 @@ save.image(file="./tmp/2017-quadrat.RData")
 ```{r, out.width="380px"}
 
 include_graphics(c(
-  "../docs/out/esa-lc.png",
-  "../docs/out/usgs-lc.png",
-  "../docs/out/fews-chirps.png",
-  "../docs/out/fews-rfe.png",
-  "../docs/out/modis-cropland.png",
-  "../docs/out/glues-suit.png"
+  "./out/esa-lc.png",
+  "./out/usgs-lc.png",
+  "./out/fews-chirps.png",
+  "./out/fews-rfe.png",
+  "./out/modis-cropland.png",
+  "./out/glues-suit.png"
   ))
 
 ```
@@ -453,8 +453,8 @@ ESA LULC grids are combined with IUCN WDPA protected areas to create areas of lo
 ```{r, eval=FALSE, out.width="380px"}
 
 include_graphics(c(
-  "../docs/out/fews-ndvi.png",
-  "../docs/out/cropland-mask.png"
+  "./out/fews-ndvi.png",
+  "./out/cropland-mask.png"
   ))
 
 
