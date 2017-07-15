@@ -1,4 +1,4 @@
 [
-["index.html", "SSA Agricultural Potential (Documentation) Section 1 Data Sources", " SSA Agricultural Potential (Documentation) BACOU, Melanie for BMGF Last updated on 2017-07-15. DO NOT USE OR CITE Section 1 Data Sources Existing sources of hi-res spatial covariates (tested over Ghana). ESA LULC grids are combined with IUCN WDPA protected areas to create areas of low/high crop suitability. MODIS C6 dekadal NDVI is summarized over a 10-year period (2005-2015). "],
+["index.html", "SSA Agricultural Potential (Documentation) Section 1 Data Sources", " SSA Agricultural Potential (Documentation) BACOU, Melanie for BMGF Last updated on 2017-07-15. DO NOT USE OR CITE Section 1 Data Sources Existing sources of hi-res spatial covariates (tested over Ghana). Dekadal eMODIS C6 NDVI grids are summarized over a 10-year period (2005-2015). "],
 ["references.html", "Section 2 References", " Section 2 References "]
 ]

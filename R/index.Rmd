@@ -486,9 +486,9 @@ include_graphics(c(
 
 ```
 
-ESA LULC grids are combined with IUCN WDPA protected areas to create areas of low/high crop suitability. MODIS C6 dekadal NDVI is summarized over a 10-year period (2005-2015).
+Dekadal eMODIS C6 NDVI grids are summarized over a 10-year period (2005-2015).
 
-```{r, eval=FALSE, out.width="380px"}
+```{r, out.width="380px"}
 
 include_graphics(c(
   "./out/fews-ndvi_gha.png",
