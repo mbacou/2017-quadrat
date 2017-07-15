@@ -50,8 +50,10 @@ library(data.table)
 library(viridis)
 library(stringr)
 
+setwd("~/Projects/2017-quadrat")
 load("./tmp/2017-quadrat.RData")
-rasterOptions(tmpdir="/home/data/tmp")
+rasterOptions(tmpdir="/home/projects/data/tmp", tmptime=24, progress="text", 
+  timer=T, overwrite=T, chunksize=2e+08)
 
 # We agreed to a quick but likely good enough approach. Dekadal NDVI data for 15-16 
 # years and will extract the maximum value for each year and take the mean of that for
@@ -301,7 +303,6 @@ save_tmap(m, "./docs/out/fews-ndvi_anom.png", width=4, height=4, units="in", fam
 # eMODIS NDVI data are stretched (mapped) linearly (to byte values) as follows:
 # [-1.0, 1.0] -> [0, 200] - Invalid Values: 201 - 255 
 # NDVI = (value - 100) / 100 
-# example: [ (150 - 100) / 100 = 0.5 NDVI ] 
 # Seems to me all zero values are clouds (white legend), so should be NA too
 # We need to download 2005-2015 10-year period, so let's add these grids into the 
 # catalog `fews`
@@ -343,39 +344,76 @@ fews <- rbind(fews, ndvi_west, fill=T)
 rm(ndvi_west)
 
 ##########################################
-# Load grids year by year over 2005-2015 10-year period and return max value
+# Load grids year by year over 2005-2014 10-year period and return max grid
+# USe stack() instead of brick() -- faster with clusterR()
 fun <- function(x) {
   x[x > 200] <- NA
-  x <- max(x[1:36], na.rm=T)
-  x <- x - 100 # Keep values as INT2S *100 to save disk space
-  return(x)
+  max((x-100), na.rm=T) 
+  # Keep values as INT2S *100 to save disk space
 }
 
 # Init list of yearly statistics
 stats <- vector("list", 10)
 names(stats) <- as.character(2005:2014)
 
-for (i in (2005:2014)[2]) {
+for (i in (2005:2014)[3:10]) {
   tmp <- stack(as.list(fews[varCode=="ndvi_west" & year(date)==i, raster]))
   showTmpFiles()
   removeTmpFiles(h=0)
+  tmp <- crop(tmp, zoi)
   # Save grid statistics for plotting
   stats[[as.character(i)]] <- summary(tmp)
   cat(i, "\n")
   # Return yearly max value
-  out <- calc(tmp, fun, filename=paste0(dir, "ndvi_west/wa", i, "_max.tif"),
+  out <- calc(tmp, fun, 
+    filename=paste0(dir, "ndvi_west/wa", i, "_max.tif"),
     datatype="INT2S", overwrite=T)
 }
 
-spplot(crop(out, gha), col.regions=pal.ndvi(255), zlim=c(0,90))
+# Load all yearly max rasters and take the 10-year mean
+tmp <- stack(as.list(paste0(dir, "ndvi_west/wa", 2005:2014, "_max.tif")))
+out <- calc(tmp, mean, na.rm=T, 
+  filename=paste0(dir, "ndvi_west/wa2005-2014_mean.tif"), overwrite=T)
+
+spplot(crop(out, gha)/100, col.regions=pal.ndvi(255),
+  xlab="Long-term eMODIS C6 NDVI 2005-2015\n(mean of yearly dekadal maximums)")
 # => all max values tend to remove variability, not sure that'd work for our purpose
 
+# Reformat time-series
+stats <- lapply(stats, function(x) {
+  x <- as.data.table(t(x))
+  x[, dekad := 1:36]
+  })
+stats <- rbindlist(stats, idcol=T)
+setnames(stats, ".id", "year")
+stats[, date := as.Date(paste0(year, "-", rep(1:12, each=3),"-", rep(c(1,11,21), 12)))]
 
-m <- tm_shape(tmp.mean) + tm_raster(names(tmp.mean), pal=pal.ndvi(255),
-  title="10-Year Max Yearly NDVI\n2005/01-2015/12\n(index)",
-  breaks=seq(-1,1.05,0.05), labels=na2null(seq(-1,1,0.05)*c(1, NA))) + p
+# Plot time-series
+xyplot(`Max.`+`Min.`+Median~ date, stats,
+  ylab="mm", xlab="Long-Term NDVI 2005-2015 (West Africa)",
+  panel=function(x, y, ...) {
+    panel.grid(h=-1, v=0, lty=2)
+    panel.xyplot(x, y, ..., type="l", col=viridis(3), lwd=1)
+    panel.abline(v=stats[, mean(`Max.`)], col="grey90")
+  },
+  key=list(text=list(c("Max.", "Min.", "Median")),
+    col=viridis(3), lty=c(1,1,1), lines=T, columns=3),
+)
 
-save_tmap(m, "./docs/out/fews-ndvi.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
+out <- raster(paste0(dir, "ndvi_west/wa2005-2014_mean.tif"))
+m <- tm_shape(crop(out, gha)) + tm_raster(names(out), pal=pal.ndvi(255),
+  title="Long-Term eMODIS C6 NDVI\n2005-2015\nmean of yearly dekadal max\n(-1,1 index)",
+  breaks=seq(-20,95,5), labels=na2null(seq(-20,90,5)/100*c(1, NA)),
+  legend.hist=T) + tm_layout(legend.outside.size=0.4) + p
+
+save_tmap(m, "./docs/out/fews-ndvi_gha.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
+
+m <- tm_shape(crop(out, nga)) + tm_raster(names(out), pal=pal.ndvi(255),
+  title="Long-Term eMODIS C6 NDVI\n2005-2015\nmean of yearly dekadal max\n(-1,1 index)",
+  breaks=seq(-20,95,5), labels=na2null(seq(-20,90,5)/100*c(1, NA)),
+  legend.hist=T) + tm_layout(legend.outside.size=0.4) + p
+
+save_tmap(m, "./docs/out/fews-ndvi_nga.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
 
 
 #####################################################################################
@@ -453,8 +491,9 @@ ESA LULC grids are combined with IUCN WDPA protected areas to create areas of lo
 ```{r, eval=FALSE, out.width="380px"}
 
 include_graphics(c(
-  "./out/fews-ndvi.png",
-  "./out/cropland-mask.png"
+  "./out/fews-ndvi_gha.png",
+  "./out/fews-ndvi_nga.png"
+  #"./out/cropland-mask.png"
   ))
 
 
