@@ -376,14 +376,16 @@ out <- raster(paste0(dir, "ndvi_west/wa2005-2014_mean.tif"))
 m <- tm_shape(crop(out, gha)) + tm_raster(names(out), pal=pal.ndvi(255),
   title="Long-Term eMODIS C6 NDVI\n2005-2015\nmean of yearly dekadal max\n(-1,1 index)",
   breaks=seq(-20,95,5), labels=na2null(seq(-20,90,5)/100*c(1, NA)),
-  legend.hist=T) + tm_layout(legend.outside.size=0.4) + p
+  legend.hist=T) + p +
+  tm_layout(legend.hist.width=1, legend.hist.height=1, legend.hist.size=.5)
 
 save_tmap(m, "./docs/out/fews-ndvi_gha.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
 
 m <- tm_shape(crop(out, nga)) + tm_raster(names(out), pal=pal.ndvi(255),
   title="Long-Term eMODIS C6 NDVI\n2005-2015\nmean of yearly dekadal max\n(-1,1 index)",
   breaks=seq(-20,95,5), labels=na2null(seq(-20,90,5)/100*c(1, NA)),
-  legend.hist=T) + tm_layout(legend.outside.size=0.4) + p
+  legend.hist=T) + p +
+  tm_layout(legend.hist.width=1, legend.hist.height=1, legend.hist.size=.5)
 
 save_tmap(m, "./docs/out/fews-ndvi_nga.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
 
