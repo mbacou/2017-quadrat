@@ -591,17 +591,9 @@ include_graphics(c(
 
 ## NDVI
 
-Dekadal eMODIS C6 NDVI grids are summarized over a 10-year period (2005-2015) using the long-term mean of yearly maxima of dekadal values.
+Dekadal eMODIS C6 NDVI grids are summarized over a 10-year period (2005-2015) using different approaches.
 
-```{r, out.width="380px"}
-
-include_graphics(c(
-  "./out/fews-ndvi_gha.png",
-  "./out/fews-ndvi_nga.png"))
-
-```
-
-```{r, fig.cap="NDVI Long-Tern mean (2005-2015, Ghana)"}
+```{r, fig.cap="NDVI Long-Term Monthly Mean and Spatial Variation (2005-2015, Ghana)", fig.height=3, fig.width=5}
 
 stats.month <- stats[, .(mean=mean(mean, na.rm=T), sd=mean(sd, na.rm=T)),
   by=.(date=factor(month.abb[month(date)], levels=month.abb))]
@@ -616,7 +608,17 @@ ggplot(stats.month, aes(date, mean, group=1)) +
 
 ```
 
-Dekadal eMODIS C6 NDVI grids are summarized over a 10-year period (2005-2015) using the long-term mean yearly counts of dekads with NDVI below 0.3.
+Long-term mean of **yearly maxima** of dekadal values.
+
+```{r, out.width="380px"}
+
+include_graphics(c(
+  "./out/fews-ndvi_gha.png",
+  "./out/fews-ndvi_nga.png"))
+
+```
+
+Long-term mean yearly **counts of dekads with NDVI below 0.3**.
 
 ```{r, out.width="380px"}
 
