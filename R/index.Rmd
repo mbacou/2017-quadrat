@@ -519,7 +519,7 @@ save.image(file="./tmp/2017-quadrat.RData")
 
 ```
 
-```{r, out.width="400px"}
+```{r, out.width="390px"}
 
 include_graphics(c(
   "./out/esa-lc.png",
@@ -534,7 +534,7 @@ include_graphics(c(
 
 Dekadal eMODIS C6 NDVI grids are summarized over a 10-year period (2005-2015) using the long-term mean of yearly maxima of dekadal values.
 
-```{r, out.width="400px"}
+```{r, out.width="390px"}
 
 include_graphics(c(
   "./out/fews-ndvi_gha.png",
@@ -544,7 +544,7 @@ include_graphics(c(
 
 Dekadal eMODIS C6 NDVI grids are summarized over a 10-year period (2005-2015) using the long-term mean yearly counts of dekads with NDVI below 0.3.
 
-```{r, out.width="400px"}
+```{r, out.width="390px"}
 
 include_graphics(c(
   "./out/fews-ndvi30_gha.png",
