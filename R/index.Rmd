@@ -502,7 +502,8 @@ save_tmap(m, "./docs/out/glues-suit.png", width=4, height=4, units="in", family=
 # Summarize GLUES across GLSS6 districts
 r <- raster("~/Projects/hc-data/GLUES/overall_cropsuit_i_1981-2010.tif")
 g2 <- shapefile("./maps/gha-glss6-svyMap_L2.shp")
-tmp <- extract(r, g2, fun=mean, na.rm=T)
+fun <- function(x, ...) mean(ifelse(x==0, NA, x), ...)
+tmp <- extract(r, g2, fun=fun, na.rm=T)
 summary(tmp[,1])
 g2$glues <- tmp[,1]
 
