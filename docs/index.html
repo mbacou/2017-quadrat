@@ -65,7 +65,12 @@
 <li><a href='./'>2017-SSA-Quadrants</a></li>
 
 <li class="divider"></li>
-<li class="chapter" data-level="1" data-path="index.html"><a href="index.html"><i class="fa fa-check"></i><b>1</b> Data Sources</a></li>
+<li class="chapter" data-level="1" data-path="index.html"><a href="index.html"><i class="fa fa-check"></i><b>1</b> Data Sources</a><ul>
+<li class="chapter" data-level="1.1" data-path="index.html"><a href="index.html#rainfall-temperature"><i class="fa fa-check"></i><b>1.1</b> Rainfall &amp; Temperature</a></li>
+<li class="chapter" data-level="1.2" data-path="index.html"><a href="index.html#land-cover"><i class="fa fa-check"></i><b>1.2</b> Land Cover</a></li>
+<li class="chapter" data-level="1.3" data-path="index.html"><a href="index.html#agricultural-suitability"><i class="fa fa-check"></i><b>1.3</b> Agricultural Suitability</a></li>
+<li class="chapter" data-level="1.4" data-path="index.html"><a href="index.html#ndvi"><i class="fa fa-check"></i><b>1.4</b> NDVI</a></li>
+</ul></li>
 <li class="chapter" data-level="2" data-path="references.html"><a href="references.html"><i class="fa fa-check"></i><b>2</b> References</a></li>
 </ul>
 
@@ -92,11 +97,32 @@
 <div id="data-sources" class="section level1">
 <h1><span class="header-section-number">Section 1</span> Data Sources</h1>
 <p>Existing sources of hi-res spatial covariates to estimate regional agricultural potential (tested over Ghana and Nigeria).</p>
-<p><img src="./out/esa-lc.png" width="380px" /><img src="./out/usgs-lc.png" width="380px" /><img src="./out/fews-chirps.png" width="380px" /><img src="./out/fews-rfe.png" width="380px" /><img src="./out/modis-cropland.png" width="380px" /><img src="./out/glues-suit.png" width="380px" /></p>
+<div id="rainfall-temperature" class="section level2">
+<h2><span class="header-section-number">1.1</span> Rainfall &amp; Temperature</h2>
+<p><img src="./out/fews-chirps.png" width="380px" /><img src="./out/fews-rfe.png" width="380px" /></p>
+</div>
+<div id="land-cover" class="section level2">
+<h2><span class="header-section-number">1.2</span> Land Cover</h2>
+<p><img src="./out/esa-lc.png" width="380px" /><img src="./out/usgs-lc.png" width="380px" /><img src="./out/modis-cropland.png" width="380px" /></p>
+</div>
+<div id="agricultural-suitability" class="section level2">
+<h2><span class="header-section-number">1.3</span> Agricultural Suitability</h2>
+<p>The 4 maps below show GLUES suitability in Ghana, summarized across districts, and then classified between districts of low/high suitability using 2 cutoff values (30% and 40%).</p>
+<p><img src="./out/glues-suit.png" width="380px" /><img src="./out/gha-glss6_glues.png" width="380px" /><img src="./out/gha-glss6_glues_2clas_30.png" width="380px" /><img src="./out/gha-glss6_glues_2clas_40.png" width="380px" /></p>
+</div>
+<div id="ndvi" class="section level2">
+<h2><span class="header-section-number">1.4</span> NDVI</h2>
 <p>Dekadal eMODIS C6 NDVI grids are summarized over a 10-year period (2005-2015) using the long-term mean of yearly maxima of dekadal values.</p>
 <p><img src="./out/fews-ndvi_gha.png" width="380px" /><img src="./out/fews-ndvi_nga.png" width="380px" /></p>
+<div class="figure"><span id="fig:unnamed-chunk-5"></span>
+<img src="fig/unnamed-chunk-5-1.png" alt="NDVI Long-Tern mean (2005-2015, Ghana)" width="1200" />
+<p class="caption">
+Fig. 1.1: NDVI Long-Tern mean (2005-2015, Ghana)
+</p>
+</div>
 <p>Dekadal eMODIS C6 NDVI grids are summarized over a 10-year period (2005-2015) using the long-term mean yearly counts of dekads with NDVI below 0.3.</p>
 <p><img src="./out/fews-ndvi30_gha.png" width="380px" /><img src="./out/fews-ndvi30_nga.png" width="380px" /></p>
+</div>
 </div>
             </section>
 

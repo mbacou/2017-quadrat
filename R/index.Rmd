@@ -26,11 +26,11 @@ Existing sources of hi-res spatial covariates to estimate regional agricultural 
 ```{r setup, include=F}
 
 library(raster)
-library(rasterVis)
 library(data.table)
 library(viridis)
 library(knitr)
 library(tmap)
+library(ggplot2)
 
 load("../tmp/2017-quadrat.RData")
 
@@ -54,8 +54,7 @@ library(tmap)
 
 setwd("~/Projects/2017-quadrat")
 load("./tmp/2017-quadrat.RData")
-rasterOptions(tmpdir="/home/projects/data/tmp", tmptime=24, progress="text", 
-  timer=T, overwrite=T, chunksize=2e+08)
+rasterOptions(tmpdir="/home/data/tmp", tmptime=24, chunksize=2e+08, progress="text")
 
 # We agreed to a quick but likely good enough approach. Dekadal NDVI data for 15-16 
 # years and will extract the maximum value for each year and take the mean of that for
@@ -398,9 +397,9 @@ fun <- function(x) {
 }
 
 for (i in (2005:2014)[2:10]) {
-  tmp <- stack(as.list(fews[varCode=="ndvi_west" & year(date)==i, raster]))
   showTmpFiles()
   removeTmpFiles(h=0)
+  tmp <- stack(as.list(fews[varCode=="ndvi_west" & year(date)==i, raster]))
   cat(i, "\n")
   # Yearly count -- 114+307 sec
   out <- calc(crop(tmp, zoi), fun, 
@@ -422,30 +421,29 @@ out <- calc(tmp, mean, na.rm=T,
 spplot(crop(out, gha), col.regions=rev(pal.ndvi(255)))
 
 # Generate time-series
-stats.xtra <- lapply(2005:2014[1], function(x) {
-  tmp <- stack(as.list(fews[varCode=="ndvi_west" & year(date)==x, raster]))
-  out <- as.data.table(t(summary(tmp)))
-  out[, stdev := cellStats(tmp, sd, na.rm=T)]
-  out[, dekad := 1:36]
-})
-stats.xtra <- rbindlist(stats.xtra, idcol=T)
-setnames(stats.xtra, c("year", "stdev"))
-stats.xtra[, date := as.Date(paste0(year, "-", rep(1:12, each=3), "-", rep(c(1,11,21), 12)))]
+stats <- vector("list", 10)
+names(stats) <- as.character(2005:2014)
+for (i in 2005:2014) {
+  cat(i, "\n")
+  showTmpFiles()
+  removeTmpFiles(h=0)  
+  tmp <- stack(as.list(fews[varCode=="ndvi_west" & year(date)==i, raster]))
+  tmp <- mask(tmp, nga)
+  tmp[tmp > 200] <- NA
+  tmp <- (tmp-100)/100
+  tmp.m <- cellStats(tmp, mean, na.rm=T)
+  tmp.sd <- cellStats(tmp, sd, na.rm=T)
+  stats[[as.character(i)]] <- data.table(mean=tmp.m, sd=tmp.sd, dekad = 1:36)
+}
 
-# Plot time-series
-xyplot(min+q25+median+q75+max~date, stats.xtra,
-  ylab="Dekads (1,36)", xlab="Long-Term NDVI 2005-2015 (West Africa)",
-  panel=function(x, y, ...) {
-    panel.grid(h=-1, v=0, lty=2)
-    panel.xyplot(x, y, ..., type="l", col=viridis(5), lwd=1)
-    panel.abline(h=stats[, mean(median)], col="grey30")
-  },
-  key=list(text=list(c("Max.", "Min.", "Median")),
-    col=viridis(5), lty=c(1,1,1), lines=T, columns=3),
-)
+stats <- rbindlist(stats, idcol=T)
+setnames(stats, c("year", "mean", "sd", "dekad"))
+stats[, date := as.Date(paste0(year, "-", rep(1:12, each=3), "-", rep(c(1,11,21), 12)))]
 
 # Plot GHA and NGA
 out <- raster(paste0(dir, "ndvi_west/wa2005-2014_ndvi30_mean.tif"))
+levelplot(crop(out, gha), zscaleLog=T, contour=T)
+
 m <- tm_shape(crop(out, gha)) + tm_raster(names(out), pal=rev(pal.ndvi(255)),
   title="Long-Term eMODIS C6 NDVI\n2005-2015\nmean yearly count\nof dekads\nbelow 0.3",
   breaks=seq(0,37,1), labels=na2null(seq(0,36,1)*c(1, NA)),
@@ -461,6 +459,7 @@ m <- tm_shape(crop(out, nga)) + tm_raster(names(out), pal=rev(pal.ndvi(255)),
   tm_layout(legend.hist.width=1, legend.hist.height=1, legend.hist.size=.5)
 
 save_tmap(m, "./docs/out/fews-ndvi30_nga.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
+
 
 #####################################################################################
 # TODO ESA MERIS NDVI
@@ -494,10 +493,43 @@ NAvalue(tmp)
 
 m <- tm_shape(crop(tmp, gha)) + tm_raster(names(tmp), pal=c("#ffffff", pal.ndvi(255)),
   title="GLUES\nCrop Suitability\n(all crops)\n(percent)",
-  breaks=seq(0,105,5), labels=na2null(seq(0,100,5)*c(1, NA))) + p
+  breaks=seq(0,105,5), labels=na2null(seq(0,100,5)*c(1, NA))) + p +
+  tm_layout(legend.hist.width=1, legend.hist.height=1, legend.hist.size=.5)
 
 save_tmap(m, "./docs/out/glues-suit.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
 
+###############################################
+# Summarize GLUES across GLSS6 districts
+r <- raster("~/Projects/hc-data/GLUES/overall_cropsuit_i_1981-2010.tif")
+g2 <- shapefile("./maps/gha-glss6-svyMap_L2.shp")
+tmp <- extract(r, g2, fun=mean, na.rm=T)
+summary(tmp[,1])
+g2$glues <- tmp[,1]
+
+m <- tm_shape(g2) + tm_polygons("glues", pal=pal.ndvi(255),
+  border.col="grey80", lwd=.8,
+  title="GLUES\nCrop Suitability\nacross Districts\n(all crops)\n(percent)",
+  breaks=seq(10,95,5), labels=na2null(seq(10,90,5)*c(1, NA))) + p
+
+save_tmap(m, "./docs/out/gha-glss6_glues.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
+
+# Classify 
+g2$glues_2clas <- factor(g2@data$glues <= 30, 
+  levels=c(TRUE, FALSE), labels=c("agpot-lo", "agpot-hi"))
+m <- tm_shape(g2) + tm_polygons("glues_2clas", pal=viridis(2),
+  border.col="grey50", lwd=.8,
+  title="GLUES Low/High\nCrop Suitability\nacross Districts\ncut = 30%") + p
+
+save_tmap(m, "./docs/out/gha-glss6_glues_2clas_30.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
+
+# Classify
+g2$glues_2clas <- factor(g2@data$glues <= 40, 
+  levels=c(TRUE, FALSE), labels=c("agpot-lo", "agpot-hi"))
+m <- tm_shape(g2) + tm_polygons("glues_2clas", pal=viridis(2),
+  border.col="grey50", lwd=.8,
+  title="GLUES Low/High\nCrop Suitability\nacross Districts\ncut = 40%") + p
+
+save_tmap(m, "./docs/out/gha-glss6_glues_2clas_40.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
 
 ```
 
@@ -514,23 +546,50 @@ save_tmap(m, "./docs/out/glues-suit.png", width=4, height=4, units="in", family=
 
 ```{r save, eval=FALSE}
 
-rm(tmp, tmp.mean, tmp1, m, out, i, x)
+rm(tmp, tmp.mean, tmp1, m, out, i, x, r)
 save.image(file="./tmp/2017-quadrat.RData")
 
 ```
+
+## Rainfall & Temperature
+
+```{r, out.width="380px"}
+
+include_graphics(c(
+  "./out/fews-chirps.png",
+  "./out/fews-rfe.png"
+  ))
+
+```
+
+## Land Cover
 
 ```{r, out.width="380px"}
 
 include_graphics(c(
   "./out/esa-lc.png",
   "./out/usgs-lc.png",
-  "./out/fews-chirps.png",
-  "./out/fews-rfe.png",
-  "./out/modis-cropland.png",
-  "./out/glues-suit.png"
+  "./out/modis-cropland.png"
   ))
 
 ```
+
+## Agricultural Suitability
+
+The 4 maps below show GLUES suitability in Ghana, summarized across districts, and then classified between districts of low/high suitability using 2 cutoff values (30% and 40%).
+
+```{r, out.width="380px"}
+
+include_graphics(c(
+  "./out/glues-suit.png",
+  "./out/gha-glss6_glues.png",
+  "./out/gha-glss6_glues_2clas_30.png",
+  "./out/gha-glss6_glues_2clas_40.png"
+  ))
+
+```
+
+## NDVI
 
 Dekadal eMODIS C6 NDVI grids are summarized over a 10-year period (2005-2015) using the long-term mean of yearly maxima of dekadal values.
 
@@ -539,6 +598,21 @@ Dekadal eMODIS C6 NDVI grids are summarized over a 10-year period (2005-2015) us
 include_graphics(c(
   "./out/fews-ndvi_gha.png",
   "./out/fews-ndvi_nga.png"))
+
+```
+
+```{r, fig.cap="NDVI Long-Tern mean (2005-2015, Ghana)"}
+
+stats.month <- stats[, .(mean=mean(mean, na.rm=T), sd=mean(sd, na.rm=T)),
+  by=.(date=factor(month.abb[month(date)], levels=month.abb))]
+
+ggplot(stats.month, aes(date, mean, group=1)) +
+  geom_line(aes(color=viridis(2)[1])) +
+  geom_ribbon(aes(ymin=mean-sd, ymax=mean+sd, color=viridis(2)[2]), fill=viridis(2)[2], alpha=.2, lwd=.2) + 
+  scale_color_manual(name="Ghana\nLong-Term\nNDVI\n2005-2015\n(-1,1)", 
+    values=viridis(2), labels=c("mean", "std. dev.")) +
+  xlab("") + ylab("") + theme_bw(base_size=10) + 
+  theme(legend.position="right", panel.grid=element_line(linetype="dotted"))
 
 ```
 

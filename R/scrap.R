@@ -1,6 +1,6 @@
 #####################################################################################
-# Title:   Scrap codes
-# Project: Agriucltural Potential Classification for sub-Saharan Africa
+# Title:   Scrap Codes
+# Project: Agricultural Potential Classification for sub-Saharan Africa
 # Author:  Bacou, Melanie <mel@mbacou.com>
 # Date:    2017, July
 #####################################################################################
