@@ -593,7 +593,7 @@ include_graphics(c(
 
 Dekadal eMODIS C6 NDVI grids are summarized over a 10-year period (2005-2015) using different approaches.
 
-```{r, fig.cap="NDVI Long-Term Monthly Mean and Spatial Variation (2005-2015, Ghana)", fig.height=3, fig.width=5}
+```{r, fig.cap="NDVI Long-Term Monthly Mean and Spatial Variation (2005-2015, Ghana)", fig.height=2, fig.width=5}
 
 stats.month <- stats[, .(mean=mean(mean, na.rm=T), sd=mean(sd, na.rm=T)),
   by=.(date=factor(month.abb[month(date)], levels=month.abb))]
@@ -604,7 +604,8 @@ ggplot(stats.month, aes(date, mean, group=1)) +
   scale_color_manual(name="Ghana\nLong-Term\nNDVI\n2005-2015\n(-1,1)", 
     values=viridis(2), labels=c("mean", "std. dev.")) +
   xlab("") + ylab("") + theme_bw(base_size=10) + 
-  theme(legend.position="right", panel.grid=element_line(linetype="dotted"))
+  theme(legend.position="right", panel.grid=element_line(linetype="dotted"),
+    legend.title=element_text(size=9))
 
 ```
 
