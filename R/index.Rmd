@@ -447,7 +447,7 @@ xyplot(min+q25+median+q75+max~date, stats.xtra,
 # Plot GHA and NGA
 out <- raster(paste0(dir, "ndvi_west/wa2005-2014_ndvi30_mean.tif"))
 m <- tm_shape(crop(out, gha)) + tm_raster(names(out), pal=rev(pal.ndvi(255)),
-  title="Long-Term eMODIS C6 NDVI\n2005-2015\nmean count of dekads\nbelow 0.3",
+  title="Long-Term eMODIS C6 NDVI\n2005-2015\nmean yearly count\nof dekads\nbelow 0.3",
   breaks=seq(0,37,1), labels=na2null(seq(0,36,1)*c(1, NA)),
   legend.hist=T) + p +
   tm_layout(legend.hist.width=1, legend.hist.height=1, legend.hist.size=.5) 
@@ -455,7 +455,7 @@ m <- tm_shape(crop(out, gha)) + tm_raster(names(out), pal=rev(pal.ndvi(255)),
 save_tmap(m, "./docs/out/fews-ndvi30_gha.png", width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
 
 m <- tm_shape(crop(out, nga)) + tm_raster(names(out), pal=rev(pal.ndvi(255)),
-  title="Long-Term eMODIS C6 NDVI\n2005-2015\nmean count of dekads\nbelow 0.3",
+  title="Long-Term eMODIS C6 NDVI\n2005-2015\nmean yearly count\nof dekads\nbelow 0.3",
   breaks=seq(0,37,1), labels=na2null(seq(0,36,1)*c(1, NA)),
   legend.hist=T) + p +
   tm_layout(legend.hist.width=1, legend.hist.height=1, legend.hist.size=.5)
