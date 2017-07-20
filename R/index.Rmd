@@ -797,7 +797,7 @@ include_graphics(c(
 Maps showing quadrant classification for Ghana and Nigeria. In this iteration the steps are as follow:
 
 1. Start from GLUES agricultural suitability map for West Africa (all crops combined) at 1km resolution  
-2. Mask out forest and urban areas based on ESA LULC map at 300m resolution. The exact classes that are considered not (low) suitable are:  
+2. Mask out forest and urban areas based on **ESA Land Use/Land Cover (LULC)** classification at 300m resolution. The exact classes that are considered not (low) suitable are:  
 
 ```{r}
 
@@ -805,11 +805,13 @@ kable(lc.lbl[mask==T, .(Code=code, Label=class)], caption="LULC Categories not S
 
 ```
 
-3. Mask out protected areas by rasterizing the 2017 version of the IUCN World Database of Protected Areas (WDPA) shapefile to 1km resolution (shown below)  
+3. Mask out protected areas by rasterizing the 2017 version of the IUCN **World Database of Protected Areas (WDPA)** shapefile to 1km resolution (shown below)  
 4. Classify the resulting raster into zones of low/high suitability using a **cutoff at 40%**.  
-5. Overlay the suitability raster with IFPRI/HarvestChoice Travel Time to **100K Market** reclassified into zones of low/high market access using a **cutoff at 4hrs** (2010 version resampled from 10km to 1km)  
+5. Overlay the resulting suitability raster with IFPRI/HarvestChoice Travel Time to **100K Market** reclassified into zones of low/high market access using a **cutoff at 4hrs** (2010 version resampled from 10km to 1km)  
 
-```{r, fig.cap="Protected Areas not Suited for Agriculture (source: WDPA 2017)", out.width="380px"}
+Showing protected areas not suited for agriculture.
+
+```{r, out.width="380px"}
 
 tm_shape(gha) + tm_fill("grey90") +
   tm_shape(wdpa[wdpa$ISO3=="GHA",]) + 
@@ -825,7 +827,9 @@ tm_shape(nga) + tm_fill("grey90") +
 
 ```
 
-```{r, fig.cap="Agricultural Suitability (after masking out unsuitable land use/cover and protected areas)", out.width="380px"}
+Agricultural suitability (after masking out unsuitable land use/cover classes and protected areas).
+
+```{r, out.width="380px"}
 
 include_graphics(c(
   "./out/glues-2clas_gha.png",
@@ -833,7 +837,7 @@ include_graphics(c(
 
 ```
 
-```{r, fig.cap="Quadrant Classification, Ghana and Nigeria", out.width="380px"}
+```{r, out.width="380px"}
 
 include_graphics(c(
   "./out/2017-quad_gha.png",

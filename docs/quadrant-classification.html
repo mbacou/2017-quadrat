@@ -96,7 +96,7 @@
 <ol style="list-style-type: decimal">
 <li>Start from GLUES agricultural suitability map for West Africa (all crops combined) at 1km resolution<br />
 </li>
-<li>Mask out forest and urban areas based on ESA LULC map at 300m resolution. The exact classes that are considered not (low) suitable are:</li>
+<li>Mask out forest and urban areas based on <strong>ESA Land Use/Land Cover (LULC)</strong> classification at 300m resolution. The exact classes that are considered not (low) suitable are:</li>
 </ol>
 <table>
 <caption><span id="tab:unnamed-chunk-7">Tab. 2.1: </span>LULC Categories not Suitable for Farming (Source: ESA/CCI Land Cover Classification, 2015)</caption>
@@ -190,48 +190,17 @@
 </tbody>
 </table>
 <ol start="3" style="list-style-type: decimal">
-<li>Mask out protected areas by rasterizing the 2017 version of the IUCN World Database of Protected Areas (WDPA) shapefile to 1km resolution (shown below)<br />
+<li>Mask out protected areas by rasterizing the 2017 version of the IUCN <strong>World Database of Protected Areas (WDPA)</strong> shapefile to 1km resolution (shown below)<br />
 </li>
 <li>Classify the resulting raster into zones of low/high suitability using a <strong>cutoff at 40%</strong>.<br />
 </li>
-<li>Overlay the suitability raster with IFPRI/HarvestChoice Travel Time to <strong>100K Market</strong> reclassified into zones of low/high market access using a <strong>cutoff at 4hrs</strong> (2010 version resampled from 10km to 1km)</li>
+<li>Overlay the resulting suitability raster with IFPRI/HarvestChoice Travel Time to <strong>100K Market</strong> reclassified into zones of low/high market access using a <strong>cutoff at 4hrs</strong> (2010 version resampled from 10km to 1km)</li>
 </ol>
-<div class="figure"><span id="fig:unnamed-chunk-8"></span>
-<img src="fig/unnamed-chunk-8-1.png" alt="Protected Areas not Suited for Agriculture (source: WDPA 2017)" width="380px" />
-<p class="caption">
-Fig. 2.1: Protected Areas not Suited for Agriculture (source: WDPA 2017)
-</p>
-</div>
-<div class="figure"><span id="fig:unnamed-chunk-8"></span>
-<img src="fig/unnamed-chunk-8-2.png" alt="Protected Areas not Suited for Agriculture (source: WDPA 2017)" width="380px" />
-<p class="caption">
-Fig. 2.1: Protected Areas not Suited for Agriculture (source: WDPA 2017)
-</p>
-</div>
-<div class="figure"><span id="fig:unnamed-chunk-9"></span>
-<img src="./out/glues-2clas_gha.png" alt="Agricultural Suitability (after masking out unsuitable land use/cover and protected areas)" width="380px" />
-<p class="caption">
-Fig. 2.2: Agricultural Suitability (after masking out unsuitable land use/cover and protected areas)
-</p>
-</div>
-<div class="figure"><span id="fig:unnamed-chunk-9"></span>
-<img src="./out/glues-2clas_nga.png" alt="Agricultural Suitability (after masking out unsuitable land use/cover and protected areas)" width="380px" />
-<p class="caption">
-Fig. 2.2: Agricultural Suitability (after masking out unsuitable land use/cover and protected areas)
-</p>
-</div>
-<div class="figure"><span id="fig:unnamed-chunk-10"></span>
-<img src="./out/2017-quad_gha.png" alt="Quadrant Classification, Ghana and Nigeria" width="380px" />
-<p class="caption">
-Fig. 2.3: Quadrant Classification, Ghana and Nigeria
-</p>
-</div>
-<div class="figure"><span id="fig:unnamed-chunk-10"></span>
-<img src="./out/2017-quad_nga.png" alt="Quadrant Classification, Ghana and Nigeria" width="380px" />
-<p class="caption">
-Fig. 2.3: Quadrant Classification, Ghana and Nigeria
-</p>
-</div>
+<p>Showing protected areas not suited for agriculture.</p>
+<p><img src="fig/unnamed-chunk-8-1.png" width="380px" /><img src="fig/unnamed-chunk-8-2.png" width="380px" /></p>
+<p>Agricultural suitability (after masking out unsuitable land use/cover classes and protected areas).</p>
+<p><img src="./out/glues-2clas_gha.png" width="380px" /><img src="./out/glues-2clas_nga.png" width="380px" /></p>
+<p><img src="./out/2017-quad_gha.png" width="380px" /><img src="./out/2017-quad_nga.png" width="380px" /></p>
 </div>
             </section>
 
