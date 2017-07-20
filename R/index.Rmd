@@ -837,7 +837,7 @@ include_graphics(c(
 
 ```
 
-The final quadrant classifications are shown below after overlaying zones of low/high market access (using below/above 4hrs to nearest 100K market for the 2 countries).
+The final quadrant classifications are shown below after overlaying zones of low/high market access (using below/above 4hrs to nearest 100K market for the 2 countries). The 2 rasters may be found at [Ghana quadrants](https://github.com/mbacou/2017-quadrat/blob/master/out/2017-quad_gha.tif) and [Nigeria quadrants](https://github.com/mbacou/2017-quadrat/blob/master/out/2017-quad_nga.tif).
 
 ```{r, out.width="380px"}
 
