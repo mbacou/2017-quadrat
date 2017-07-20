@@ -801,7 +801,7 @@ Maps showing quadrant classification for Ghana and Nigeria. In this iteration th
 
 ```{r}
 
-kable(lc.lbl[mask==T, .(Code=code, Label=class)], caption="LULC Categories not Suitable for Farming (Source: ESA/CCI Land Cover Classification, 2015)")
+kable(lc.lbl[mask==T, .(Code=code, Label=class)], align="cl", caption="LULC Categories not Suitable for Farming (Source: ESA/CCI Land Cover Classification, 2015)")
 
 ```
 
