@@ -816,13 +816,13 @@ Showing protected areas not suited for agriculture.
 tm_shape(gha) + tm_fill("grey90") +
   tm_shape(wdpa[wdpa$ISO3=="GHA",]) + 
   tm_polygons("IUCN_CAT", border.col="white", pal=viridis(255), 
-    title="Ghana\nProtected\nArea") +
+    title="Ghana\nProtected\nAreas") +
   tm_text("NAME", size=.6, col="grey10", auto.placement=1) + p
 
 tm_shape(nga) + tm_fill("grey90") +
   tm_shape(wdpa[wdpa$ISO3=="NGA",]) + 
   tm_polygons("IUCN_CAT", border.col="white", pal=viridis(255), 
-    title="Nigeria\nProtected\nArea") +
+    title="Nigeria\nProtected\nAreas") +
   tm_text("NAME", size=.6, col="grey10", auto.placement=1) + p
 
 ```
@@ -836,6 +836,8 @@ include_graphics(c(
   "./out/glues-2clas_nga.png"))
 
 ```
+
+The final quadrant classifications are shown below after overlaying zones of low/high market access (using below/above 4hrs to nearest 100K market for the 2 countries).
 
 ```{r, out.width="380px"}
 
