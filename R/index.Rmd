@@ -78,7 +78,7 @@ zoi <- rbind(gha, nga)
 
 # Default map options
 # tm_scale_bar(position=c("right", "bottom"), breaks=c(0,50,100,150)) +
-p <- tm_layout(legend.outside=T, legend.text.size=.8, attr.outside=T, title.size=.8)
+p <- tm_layout(fontfamily="Roboto Condensed", legend.outside=T, legend.text.size=.8, attr.outside=T, title.size=.8)
 
 
 ##################################################################################### 
@@ -534,20 +534,182 @@ save_tmap(m, "./docs/out/gha-glss6_glues_2clas_40.png", width=4, height=4, units
 
 ```
 
-```{r cpmask, eval=FALSE}
+```{r mask, eval=FALSE}
 
 # 1a) Reclassify ESA LULC grid between no/lo/hi crop suitability
 # 1b) Else use MODIS mosaic cropland (mask out pixels with 0 probability)
 # 2) Mask out protected areas (rasterize WDPA shapefile)
-# 3) Study the distribution of NDVI values across suitability classes
+# 3a) Study the distribution of NDVI values across suitability classes
+# 3b) Else overlay LULC mask on top of GLUES suitability
+# 4) Make multivariate map for Peter (showing proportion of SHFs in each quadrant)
 
+# Clean up
+showTmpFiles()
+removeTmpFiles(h=0)
+
+# Load GLUES
+glues <- raster("~/Projects/hc-data/GLUES/overall_cropsuit_i_1981-2010.tif")
+NAvalue(glues)
+# 0 includes water bodies
+glues.gha <- crop(glues, gha)
+glues.nga <- crop(glues, nga)
+glues.gha[glues.gha==0] <- NA
+glues.nga[glues.nga==0] <- NA
+rm(glues)
+
+# Load WDPA 2017 version is crazy big!
+wdpa <- shapefile("~/Projects/hc-data/WDPA/WDPA_July2017-shapefile-polygons.shp")
+wdpa <- wdpa[wdpa$ISO3 %in% c("GHA", "NGA", "ETH", "TZA"),]
+saveRDS(wdpa, file="./tmp/WDPA_July2017-shapefile-polygons_BMGF.rds")
+sort(unique(wdpa$IUCN_CAT))
+# [1] "Ia"             "Ib"             "II"             "III"            "IV"            
+# [6] "Not Applicable" "Not Reported"   "VI" 
+wdpa <- wdpa[!wdpa$IUCN_CAT %in% c("Not Applicable", "Not Reported"),]
+wdpa.lbl <- fread("
+varCode | varLabel
+Ia | Strict nature reserve
+Ib | Wilderness area
+II | National park 
+III | Natural monument
+IV | Habitat/species management
+V | Protected landscape/seascape
+VI | Managed resource protected area", sep="|")
+tm_shape(wdpa) + tm_polygons("IUCN_CAT")
+
+# Mask out protected areas from `glues` rasters, setting mask value to 0
+glues.gha <- rasterize(wdpa[wdpa$ISO3=="GHA",], glues.gha, update=T, field=0)
+glues.nga <- rasterize(wdpa[wdpa$ISO3=="NGA",], glues.nga, update=T, field=0)
+
+# Load ESA/CCI LULC
+lc <- raster("~/Projects/hc-data/ESA/ESACCI-LC-L4-LCCS-Map-300m-P1Y-2015-v2.0.7.tif")
+res(lc)
+# [1] 0.002777778 0.002777778
+lc <- crop(lc, zoi)
+hist(lc)
+
+# Convert the following LULC classes to 0
+lc.lbl <- fread("~/Projects/hc-data/ESA/ESACCI-LC-Categories.csv")
+lc.lbl[, mask := FALSE]
+lc.lbl[code %between% c(50,90) | code >= 160, mask := TRUE]
+lc[lc %between% c(50,90) | lc >= 160] <- 0
+
+# Mask out
+lc.gha <- resample(lc, glues.gha, method="ngb")
+lc.nga <- resample(lc, glues.nga, method="ngb")
+
+setkey(lc.lbl, code)
+spplot(lc.gha, col.regions=lc.lbl[J(unique(lc)), col], at=c(-1, unique(lc)), 
+  colorkey=list(at=1:15, labels=list(labels=lc.lbl[J(unique(lc)), cat], at=1:14+.5)))
+spplot(crop(lc, nga), col.regions=lc.lbl[J(unique(lc)), col], at=c(-1, unique(lc)), 
+  colorkey=list(at=1:15, labels=list(labels=lc.lbl[J(unique(lc)), cat], at=1:14+.5)))
+
+glues.gha <- mask(glues.gha, lc.gha, maskvalue=0, updatevalue=0)
+glues.nga <- mask(glues.nga, lc.nga, maskvalue=0, updatevalue=0)
+
+spplot(glues.gha, col.regions=c("#ffffff", pal.ndvi(255)))
+spplot(glues.nga, col.regions=c("#ffffff", pal.ndvi(255)))
+
+# Classify into low/high suitability using 40% cutoff
+glues.gha.2clas <- reclassify(glues.gha, c(0, 40, 0,  40, 100, 1), right=F)
+glues.nga.2clas <- reclassify(glues.nga, c(0, 40, 0,  40, 100, 1), right=F)
+glues.gha.2clas <- ratify(glues.gha.2clas)
+glues.nga.2clas <- ratify(glues.nga.2clas)
+levels(glues.gha.2clas)[[1]]$code <- c(0L,1L) 
+levels(glues.nga.2clas)[[1]]$code <- c(0L,1L) 
+levels(glues.gha.2clas)[[1]]$label <- c("agpot-lo", "agpot-hi") 
+levels(glues.nga.2clas)[[1]]$label <- c("agpot-lo", "agpot-hi") 
+
+# Save plots
+m <- tm_shape(mask(glues.gha.2clas, gha)) + tm_raster(pal=viridis(2),
+  breaks=0:2, labels=c("agpot-lo", "agpot-hi"),
+  title="Ghana\nZones of\nLow/High\nAgricultural\nSuitability") + p
+
+save_tmap(m, "./docs/out/glues-2clas_gha.png", 
+  width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
+
+m <- tm_shape(mask(glues.nga.2clas, nga)) + tm_raster(pal=viridis(2),
+  breaks=0:2, labels=c("agpot-lo", "agpot-hi"),
+  title="Nigeria\nZones of\nLow/High\nAgricultural\nSuitability") + p
+
+save_tmap(m, "./docs/out/glues-2clas_nga.png", 
+  width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
+
+###############################################
+# Load `tt100K`
+load("~/Projects/hc-data/CELL5M/cell5m.rda")
+tmp <- names(dt)[names(dt) %like% "tt10"]
+tt <- dt[, .SD, .SDcols=c("CELL5M", "X", "Y", tmp)]
+rm(dt); gc()
+tt <- SpatialPixelsDataFrame(tt[, .(X,Y)], data.frame(tt)[, 4:8],
+  proj4string=CRS("+init=epsg:4326"))
+tt <- stack(tt)
+NAvalue(tt)
+minValue(tt[["tt10_100k"]])
+# [1] 0.05553383
+maxValue(tt[["tt10_100k"]])
+# [1] 304.7817
+
+# Resample to 1km
+tt100k.gha <- resample(tt[["tt10_100k"]], glues.gha.2clas)
+tt100k.nga <- resample(tt[["tt10_100k"]], glues.nga.2clas)
+rm(tt); gc()
+
+# Classifiy into low/high market access
+tt100k.gha <- reclassify(tt100k.gha, c(0,4,1, 4,305,0), right=T)
+tt100k.gha <- ratify(tt100k.gha)
+levels(tt100k.gha)[[1]]$code = c(0,1)
+levels(tt100k.gha)[[1]]$label = c("mkt-lo", "mkt-hi")
+spplot(tt100k.gha, "code")
+
+tt100k.nga <- reclassify(tt100k.nga, c(0,4,1, 4,305,0), right=T)
+tt100k.nga <- ratify(tt100k.nga)
+levels(tt100k.nga)[[1]]$code = c(0,1)
+levels(tt100k.nga)[[1]]$label = c("mkt-lo", "mkt-hi")
+spplot(tt100k.nga, "code")
+
+# Overlay
+quad.gha <- overlay(glues.gha.2clas, tt100k.gha, fun=function(x,y) 10*x+y)
+quad.nga <- overlay(glues.nga.2clas, tt100k.nga, fun=function(x,y) 10*x+y)
+
+quad.gha <- ratify(quad.gha)
+levels(quad.gha)[[1]]$code = c(0,1,10,11)
+levels(quad.gha)[[1]]$label = c(
+  "agpot-lo / mkt-lo", "agpot-lo / mkt-hi", 
+  "agpot-hi / mkt-lo", "agpot-hi / mkt-hi")
+spplot(quad.gha, "code")
+
+quad.nga <- ratify(quad.nga)
+levels(quad.nga)[[1]]$code = c(0,1,10,11)
+levels(quad.nga)[[1]]$label = c(
+  "agpot-lo / mkt-lo", "agpot-lo / mkt-hi", 
+  "agpot-hi / mkt-lo", "agpot-hi / mkt-hi")
+spplot(quad.nga, "code")
+
+# Export final quadrant rasters
+writeRaster(quad.gha, filename="./out/2017-quad_gha.tif", datatype="INT2S")
+writeRaster(quad.nga, filename="./out/2017-quad_nga.tif", datatype="INT2S")
+
+# Save plots
+m <- tm_shape(mask(quad.gha, gha)) + tm_raster(pal=viridis(4),
+  breaks=c(levels(quad.gha)[[1]]$code, 12), labels=levels(quad.gha)[[1]]$label,
+  title="Ghana\nQuadrant\nClassification") + p
+
+save_tmap(m, "./docs/out/2017-quad_gha.png", 
+  width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
+
+m <- tm_shape(mask(quad.nga, nga)) + tm_raster(pal=viridis(4),
+  breaks=c(levels(quad.nga)[[1]]$code, 12), labels=levels(quad.nga)[[1]]$label,
+  title="Nigeria\nQuadrant\nClassification") + p
+
+save_tmap(m, "./docs/out/2017-quad_nga.png", 
+  width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
 
 ```
 
 
 ```{r save, eval=FALSE}
 
-rm(tmp, tmp.mean, tmp1, m, out, i, x, r)
+rm(tmp, tmp.mean, tmp1, m, out, i, x, r, g2)
 save.image(file="./tmp/2017-quadrat.RData")
 
 ```
@@ -604,9 +766,9 @@ ggplot(stats.month, aes(date, mean, group=1)) +
   geom_ribbon(aes(ymin=mean-sd, ymax=mean+sd, color=viridis(2)[2]), fill=viridis(2)[2], alpha=.2, lwd=.2) + 
   scale_color_manual(name="Ghana\nLong-Term\nNDVI\n2005-2015\n(-1,1)", 
     values=viridis(2), labels=c("mean", "std. dev.")) +
-  xlab("") + ylab("") + theme_bw(base_size=8) + 
+  xlab("") + ylab("") + theme_bw(base_size=7) + 
   theme(legend.position="right", panel.grid=element_line(linetype="dotted"),
-    legend.title=element_text(size=7))
+    legend.title=element_text(size=6))
 
 ```
 
@@ -627,6 +789,55 @@ Long-term mean yearly **counts of dekads with NDVI below 0.3**.
 include_graphics(c(
   "./out/fews-ndvi30_gha.png",
   "./out/fews-ndvi30_nga.png"))
+
+```
+
+# Quadrant Classification
+
+Maps showing quadrant classification for Ghana and Nigeria. In this iteration the steps are as follow:
+
+1. Start from GLUES agricultural suitability map for West Africa (all crops combined) at 1km resolution  
+2. Mask out forest and urban areas based on ESA LULC map at 300m resolution. The exact classes that are considered not (low) suitable are:  
+
+```{r}
+
+kable(lc.lbl[mask==T, .(Code=code, Label=class)], caption="LULC Categories not Suitable for Farming (Source: ESA/CCI Land Cover Classification, 2015)")
+
+```
+
+3. Mask out protected areas by rasterizing the 2017 version of the IUCN World Database of Protected Areas (WDPA) shapefile to 1km resolution (shown below)  
+4. Classify the resulting raster into zones of low/high suitability using a **cutoff at 40%**.  
+5. Overlay the suitability raster with IFPRI/HarvestChoice Travel Time to **100K Market** reclassified into zones of low/high market access using a **cutoff at 4hrs** (2010 version resampled from 10km to 1km)  
+
+```{r, fig.cap="Protected Areas not Suited for Agriculture (source: WDPA 2017)", out.width="380px"}
+
+tm_shape(gha) + tm_fill("grey90") +
+  tm_shape(wdpa[wdpa$ISO3=="GHA",]) + 
+  tm_polygons("IUCN_CAT", border.col="white", pal=viridis(255), 
+    title="Ghana\nProtected\nArea") +
+  tm_text("NAME", size=.6, col="grey10", auto.placement=1) + p
+
+tm_shape(nga) + tm_fill("grey90") +
+  tm_shape(wdpa[wdpa$ISO3=="NGA",]) + 
+  tm_polygons("IUCN_CAT", border.col="white", pal=viridis(255), 
+    title="Nigeria\nProtected\nArea") +
+  tm_text("NAME", size=.6, col="grey10", auto.placement=1) + p
+
+```
+
+```{r, fig.cap="Agricultural Suitability (after masking out unsuitable land use/cover and protected areas)", out.width="380px"}
+
+include_graphics(c(
+  "./out/glues-2clas_gha.png",
+  "./out/glues-2clas_nga.png"))
+
+```
+
+```{r, fig.cap="Quadrant Classification, Ghana and Nigeria", out.width="380px"}
+
+include_graphics(c(
+  "./out/2017-quad_gha.png",
+  "./out/2017-quad_nga.png"))
 
 ```
 
