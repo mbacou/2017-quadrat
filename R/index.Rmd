@@ -374,7 +374,7 @@ spplot(crop(out, gha)/100, col.regions=pal.ndvi(255),
 out <- raster(paste0(dir, "ndvi_west/wa2005-2014_mean.tif"))
 m <- tm_shape(crop(out, gha)) + tm_raster(names(out), pal=pal.ndvi(255),
   title="Long-Term eMODIS C6 NDVI\n2005-2015\nmean of yearly dekadal max\n(-1,1 index)",
-  breaks=seq(-20,95,5), labels=na2null(seq(-20,90,5)/100*c(1, NA)),
+  breaks=seq(10,95,5), labels=na2null(seq(10,90,5)/100*c(1, NA)),
   legend.hist=T) + p +
   tm_layout(legend.hist.width=1, legend.hist.height=1, legend.hist.size=.5)
 
@@ -382,7 +382,7 @@ save_tmap(m, "./docs/out/fews-ndvi_gha.png", width=4, height=4, units="in", fami
 
 m <- tm_shape(crop(out, nga)) + tm_raster(names(out), pal=pal.ndvi(255),
   title="Long-Term eMODIS C6 NDVI\n2005-2015\nmean of yearly dekadal max\n(-1,1 index)",
-  breaks=seq(-20,95,5), labels=na2null(seq(-20,90,5)/100*c(1, NA)),
+  breaks=seq(10,95,5), labels=na2null(seq(10,90,5)/100*c(1, NA)),
   legend.hist=T) + p +
   tm_layout(legend.hist.width=1, legend.hist.height=1, legend.hist.size=.5)
 
@@ -609,6 +609,10 @@ glues.nga <- mask(glues.nga, lc.nga, maskvalue=0, updatevalue=0)
 spplot(glues.gha, col.regions=c("#ffffff", pal.ndvi(255)))
 spplot(glues.nga, col.regions=c("#ffffff", pal.ndvi(255)))
 
+# Save raster
+writeRaster(glues.gha, "./out/2017-glues-suit_gha.tif")
+writeRaster(glues.nga, "./out/2017-glues-suit_nga.tif")
+
 # Classify into low/high suitability using 40% cutoff
 glues.gha.2clas <- reclassify(glues.gha, c(0, 40, 0,  40, 100, 1), right=F)
 glues.nga.2clas <- reclassify(glues.nga, c(0, 40, 0,  40, 100, 1), right=F)
@@ -633,6 +637,7 @@ m <- tm_shape(mask(glues.nga.2clas, nga)) + tm_raster(pal=viridis(2),
 
 save_tmap(m, "./docs/out/glues-2clas_nga.png", 
   width=4, height=4, units="in", family="Roboto Condensed", pointsize=9)
+
 
 ###############################################
 # Load `tt100K`
